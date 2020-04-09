@@ -1,51 +1,44 @@
 # convert_ids.py
 
-# STRING used Ensembl protein IDs and the preprint used Uniprot IDs
+# get the string IDs for all of the human proteins found in the preprint
 
-# Uniprot IDs to multiple Ensembl protein IDs, so we're converting all Ensembl
-# protein IDs to Uniprot IDs (turns out all of the Ensembl protein IDs we have
-# from STRING map onto unique uniprot IDs, which is great)
+import requests
 
-# There are tons of IDs so we're doing this programmatically
+# get list of uniprot IDs for the human proteins that interacted with COVID
+# proteins
 
-import urllib.parse
-import urllib.request
-
-# first read in the STRING file and turn it into a list of all the unique IDs
-# we want to convert
-# use a set to avoid duplicates
-ensembl_ids = set()
-with open('string_human_ppi.txt') as in_file:
+prot_list = list()
+with open('supp_table_2.tsv', 'r') as in_file:
+    # skip both header rows
+    x = next(in_file)
+    x = next(in_file)
     for line in in_file:
-        # strip newlines and split on space
-        cols = line.rstrip('\n').split(' ')
-        # ignore first line
-        if cols[0] == 'protein1':
-            continue
-        else:
-            # third column is interaction strength
-            for ensembl_id in cols[:2]:
-                # all ensembl IDs are prefixed by 9606. for some reason
-                ensembl_ids.add(ensembl_id.lstrip('9606.'))
+        uniprot_id = line.rstrip('\n').split('\t')[7]
+        prot_list.append(uniprot_id)
 
-# make the set into a delimited string
-id_string = ' '.join(ensembl_ids)
+# interact with STRING API
 
-# now interact with the uniprot API
-url = 'https://www.uniprot.org/uploadlists/'
+# construct URL
+
+string_api_url = "https://string-db.org/api"
+output_format = "tsv-no-header"
+method = "get_string_ids"
+
+request_url = "/".join([string_api_url, output_format, method])
 
 params = {
-    # ensembl protein ID
-    'from': 'ENSEMBL_PRO_ID',
-    # normal uniprot ID
-    'to': 'ID',
-    'format': 'tab',
-    'query': id_string
+    "identifiers" : '\r'.join(prot_list),
+    "species" : 9606, # human NCBI identifier 
+    "limit" : 1, # only one (best) identifier per input protein
+    "echo_query" : 1, # see input identifiers in output
+    "caller_identity" : "dcmoyer@bu.edu" # they want a personal identifier
 }
 
-data = urllib.parse.urlencode(params)
-data = data.encode('utf-8')
-req = urllib.request.Request(url, data)
-with urllib.request.urlopen(req) as f:
-   response = f.read()
-print(response.decode('utf-8'))
+results = requests.post(request_url, data=params)
+
+# write output
+with open('string_ids_for_covid_interactors.csv', 'w') as out:
+    for line in results.text.strip().split("\n"):
+        l = line.split("\t")
+        input_identifier, string_identifier = l[0], l[2]
+        out.write(input_identifier + ',' + string_identifier + '\n')

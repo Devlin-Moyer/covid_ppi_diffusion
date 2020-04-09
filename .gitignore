@@ -1,2 +1,7 @@
+bin/
+include/
+lib/
+share/
 ensembl_ids.csv
 string_human_ppi.txt
+.R*
