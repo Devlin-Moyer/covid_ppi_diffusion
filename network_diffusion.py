@@ -6,6 +6,7 @@ import networkx as nx
 import re
 import scipy as sp
 import numpy as np
+import pandas as pd
 
 # make a networkx graph to hold the human PPI
 print('Creating human PPI')
@@ -81,5 +82,13 @@ for prot in ppi_graph.nodes():
 
 diff_vec = np.array(diff_vec)
 
-diff_result = diff_vec * diff_mat
-print(diff_result)
+# now multiply the diffusion matrix with this vector to get our ranked list of
+# proteins
+diff_result = diff_mat * diff_vec
+# doesn't come with labels but we know the order of the elements in diff_result
+# and ppi_graph.nodes() is the same
+full_df = pd.DataFrame(
+    list(zip(ppi_graph.nodes(), diff_result)),
+    columns = ['protein', 'rank']
+)
+full_df.to_csv('diffusion_result.csv', index = False)
