@@ -24,7 +24,6 @@ with open('string_to_uniprot_id_dict.tsv', 'r') as in_file:
         id_dict[cols[0]] = cols[1]
 
 # now read in the human PPI
-ppi_lists = list()
 i = 0
 with open('string_human_ppi.txt', 'r') as in_file:
     # skip header
