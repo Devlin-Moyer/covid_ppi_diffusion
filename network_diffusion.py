@@ -24,23 +24,20 @@ with open('string_to_uniprot_id_dict.tsv', 'r') as in_file:
         id_dict[cols[0]] = cols[1]
 
 # now read in the human PPI
-i = 0
 with open('string_human_ppi.txt', 'r') as in_file:
     # skip header
     x = next(in_file)
     for line in in_file:
-        i += 1
-        if i % 1000000 == 0:
-            print(f'On line {i}')
         cols = line.rstrip('\n').split(' ')
         # convert IDs, but since most IDs won't map, use a try/except loop
         try:
             uniprot_ids = [id_dict[cols[0]], id_dict[cols[1]]]
-            ppi_graph.add_edge(
-                uniprot_ids[0],
-                uniprot_ids[1],
-                weight = float(cols[2])
-            )
+            # filter out low-scoring interactions
+            if float(cols[2]) >= 700:
+                ppi_graph.add_edge(
+                    uniprot_ids[0],
+                    uniprot_ids[1]
+                )
         except KeyError:
             continue
  
@@ -58,8 +55,7 @@ with open('supp_table_2.tsv', 'r') as in_file:
         covid_prot = re.sub(' ', '_', cols[0])
         human_prot = cols[7]
         interactors.append(human_prot)
-        score = float(cols[3])
-        ppi_graph.add_edge(covid_prot, human_prot, weight = score)
+        ppi_graph.add_edge(covid_prot, human_prot)
 
 # compute diffusion matrix
 print('Computing Laplacian matrix')
@@ -68,6 +64,7 @@ id_mat = sp.sparse.identity(lap_mat.shape[0]).tocsc()
 print('Computing diffusion matrix')
 diff_mat = sp.sparse.linalg.inv(id_mat + (0.1 * lap_mat))
 
+print('Creating diffusion vector')
 # need to create a binary vector with 1s for all COVID genes and 0s for all
 # human genes in the same order as the rows in diff_mat
 diff_vec = list()
@@ -84,6 +81,8 @@ diff_vec = np.array(diff_vec)
 # now multiply the diffusion matrix with this vector to get our ranked list of
 # proteins
 diff_result = diff_mat * diff_vec
+
+print('Preparing output')
 # doesn't come with labels but we know the order of the elements in diff_result
 # and ppi_graph.nodes() is the same
 full_df = pd.DataFrame(
