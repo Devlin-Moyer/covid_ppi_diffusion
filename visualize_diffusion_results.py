@@ -1,11 +1,12 @@
 # visualize_diffusion_results.py
 
+import networkx as nx
 import pygraphviz as gv
 import re
 
 graph = gv.AGraph(splines = 'true')
 
-print('Adding human-COVID interactions to graph')
+print('Creating human-COVID PPI')
 
 # start with human-COVID interactions, since we're looking at how close other
 # human proteins are to these
@@ -90,8 +91,7 @@ with open('string_human_ppi.txt', 'r') as in_file:
                     graph.add_node(uniprot_ids[1], color = 'red')
                 graph.add_edge(
                     uniprot_ids[0],
-                    uniprot_ids[1],
-                    weight = float(cols[2])
+                    uniprot_ids[1]
                 )
         except KeyError:
             continue
