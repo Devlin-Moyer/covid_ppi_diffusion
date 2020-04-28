@@ -44,7 +44,7 @@ with open('string_human_ppi.txt', 'r') as in_file:
 # now add in edges for human-covid interactions
 print('Adding human-COVID edges')
 # also make a list for later
-interactors = list()
+covid_prots = list()
 with open('supp_table_2.tsv', 'r') as in_file:
     # skip both header lines
     x = next(in_file)
@@ -54,8 +54,23 @@ with open('supp_table_2.tsv', 'r') as in_file:
         # nobody likes whitespace
         covid_prot = re.sub(' ', '_', cols[0])
         human_prot = cols[7]
-        interactors.append(human_prot)
+        covid_prots.append(covid_prot)
         ppi_graph.add_edge(covid_prot, human_prot)
+
+# now add in edges for human-SARS interactinos
+sars_prots = list()
+with open('sars_human_interactions.tsv', 'r') as in_file:
+    for line in in_file:
+        cols = line.rstrip('\n').split('\t')
+        # uniprot IDs are prefixed by 'uniprotkb:' 
+        prot1 = cols[0].lstrip('uniprotkb:')
+        prot2 = cols[1].lstrip('uniprotkb:')
+        # SARS proteins aren't consistently in the same column
+        if prot1.endswith('CVHSA'):
+            sars_prots.append(prot1)
+        elif prot2.endswith('CVHSA'):
+            sars_prots.append(prot2)
+        ppi_graph.add_edge(prot1, prot2)
 
 # compute diffusion matrix
 print('Computing Laplacian matrix')
@@ -64,29 +79,55 @@ id_mat = sp.sparse.identity(lap_mat.shape[0]).tocsc()
 print('Computing diffusion matrix')
 diff_mat = sp.sparse.linalg.inv(id_mat + (0.1 * lap_mat))
 
-print('Creating diffusion vector')
-# need to create a binary vector with 1s for all COVID genes and 0s for all
+print('Doing COVID-other diffusion')
+# need to create a binary vector with 1s for all COVID proteins and 0s for all
 # human genes in the same order as the rows in diff_mat
-diff_vec = list()
+covid_diff_vec = list()
 # testing on small graphs indicates that the order of nodes in graph.nodes()
 # always matches the order of columns in the Laplacian matrix
 for prot in ppi_graph.nodes():
-    if prot in interactors:
-        diff_vec.append(1)
+    if prot in covid_prots:
+        covid_diff_vec.append(1)
     else:
-        diff_vec.append(0)
+        covid_diff_vec.append(0)
 
-diff_vec = np.array(diff_vec)
+covid_diff_vec = np.array(covid_diff_vec)
 
 # now multiply the diffusion matrix with this vector to get our ranked list of
 # proteins
-diff_result = diff_mat * diff_vec
+covid_diff_result = diff_mat * covid_diff_vec
+
+print('Doing SARS-other diffusion')
+# need to create a binary vector with 1s for all COVID genes and 0s for all
+# human genes in the same order as the rows in diff_mat
+sars_diff_vec = list()
+# testing on small graphs indicates that the order of nodes in graph.nodes()
+# always matches the order of columns in the Laplacian matrix
+for prot in ppi_graph.nodes():
+    if prot in sars_prots:
+        sars_diff_vec.append(1)
+    else:
+        sars_diff_vec.append(0)
+
+sars_diff_vec = np.array(sars_diff_vec)
+
+# now multiply the diffusion matrix with this vector to get our ranked list of
+# proteins
+sars_diff_result = diff_mat * sars_diff_vec
 
 print('Preparing output')
 # doesn't come with labels but we know the order of the elements in diff_result
 # and ppi_graph.nodes() is the same
-full_df = pd.DataFrame(
-    list(zip(ppi_graph.nodes(), diff_result)),
+covid_df = pd.DataFrame(
+    list(zip(ppi_graph.nodes(), covid_diff_result)),
     columns = ['protein', 'rank']
 )
-full_df.to_csv('diffusion_result.csv', index = False)
+covid_df.to_csv('covid_diff.csv', index = False)
+
+# doesn't come with labels but we know the order of the elements in diff_result
+# and ppi_graph.nodes() is the same
+sars_df = pd.DataFrame(
+    list(zip(ppi_graph.nodes(), sars_diff_result)),
+    columns = ['protein', 'rank']
+)
+sars_df.to_csv('sars_diff.csv', index = False)
