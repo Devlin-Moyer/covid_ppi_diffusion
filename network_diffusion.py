@@ -42,7 +42,7 @@ with open('string_human_ppi.txt', 'r') as in_file:
             continue
  
 # now add in edges for human-covid interactions
-print('Adding human-COVID edges')
+print('Adding human-virus edges')
 # also make a list for later
 covid_prots = list()
 with open('supp_table_2.tsv', 'r') as in_file:

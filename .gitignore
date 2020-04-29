@@ -7,3 +7,4 @@ share/
 other_virus_data.txt
 *string*
 *.png
+*.npy

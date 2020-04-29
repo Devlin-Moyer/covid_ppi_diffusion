@@ -1,4 +1,4 @@
-# visualize_diffusion_results.py
+# visualize_covid-human_diffusion.py
 
 import networkx as nx
 import pygraphviz as gv
@@ -34,7 +34,7 @@ print('Working with protein diffusion scores')
 # read in diffusion results so we can pick out which of the many proteins in
 # the full human PPI have particularly high scores
 diffusion_scores = list()
-with open('diffusion_result.csv', 'r') as in_file:
+with open('covid-human_diff.csv', 'r') as in_file:
     # skip header
     x = next(in_file)
     for line in in_file:
@@ -96,5 +96,10 @@ with open('string_human_ppi.txt', 'r') as in_file:
         except KeyError:
             continue
  
+# Now drop all nodes with a degree of 1
+for (node, degree) in graph.degree_iter():
+    if degree == 1:
+        graph.delete_node(node)
+
 print('Creating image of network')
-graph.draw('diffusion_result.png', prog = 'fdp')
+graph.draw('covid-human_diff.png', prog = 'fdp')
