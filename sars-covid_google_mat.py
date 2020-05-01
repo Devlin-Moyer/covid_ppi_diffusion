@@ -92,7 +92,20 @@ for i in range(A.shape[0]):
 
 # make the stochastic matrix into the Google matrix
 alpha = 0.85 # I have literally no idea how to choose alpha
-G = alpha*S + (1-alpha)*A.shape[0]
+G = alpha*S + (1-alpha)/A.shape[0]
+
+# subset the matrix to only get the rows and columns corresponding to SARS and
+# COVID proteins. make a list of the appropriate indices
+indices = list()
+# we know that the order of entries in the matrix is the same as the order in
+# graph.nodes() (from testing on small graphs)
+for node in ppi_graph.nodes():
+    if node in sars_prots or node in covid_prots:
+        # find the index of this node in ppi_graph.nodes()
+        indices.append(list(ppi_graph.nodes()).index(node))
+
+reduced_G = G[indices,]
+reduced_G = G[:,indices]
 
 print('Saving Google matrix')
-np.save('sars-covid_google_mat.npy', G)
+np.save('sars-covid_google_mat.npy', reduced_G)
